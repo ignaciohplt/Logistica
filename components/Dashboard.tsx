@@ -16,7 +16,7 @@ import {
   Users
 } from "lucide-react";
 import { AppData, Customer, Order, PlannedRoute, Priority, RouteOption, Truck } from "@/lib/types";
-import { defaultData, loadData, saveData, today } from "@/lib/storage";
+import { defaultData, deleteCustomerFromDb, deleteOrderFromDb, deleteTruckFromDb, loadData, saveData, today } from "@/lib/storage";
 import { generateRouteOptions, googleMapsUrl, minutesToText, whatsappRouteText } from "@/lib/route";
 
 const RouteMap = dynamic(() => import("@/components/RouteMap"), { ssr: false });
@@ -45,14 +45,31 @@ export default function Dashboard() {
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
   const [geocodingCustomerId, setGeocodingCustomerId] = useState<string | null>(null);
   const [message, setMessage] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
-    setData(loadData());
+    async function start() {
+      try {
+        const saved = await loadData();
+        setData(saved);
+        setLoaded(true);
+      } catch (error) {
+        flash(error instanceof Error ? error.message : "No se pudieron cargar los datos.");
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    start();
   }, []);
 
   useEffect(() => {
-    saveData(data);
-  }, [data]);
+    if (!loaded) return;
+    saveData(data).catch((error) => {
+      flash(error instanceof Error ? error.message : "No se pudieron guardar los datos.");
+    });
+  }, [data, loaded]);
 
   const routeOptions = useMemo(
     () =>
@@ -92,13 +109,18 @@ export default function Dashboard() {
     flash("Cliente actualizado.");
   }
 
-  function removeCustomer(customerId: string) {
-    updateData({
-      ...data,
-      customers: data.customers.filter((customer) => customer.id !== customerId),
-      orders: data.orders.filter((order) => order.customerId !== customerId)
-    });
-    flash("Cliente eliminado junto con sus pedidos.");
+  async function removeCustomer(customerId: string) {
+    try {
+      await deleteCustomerFromDb(customerId);
+      updateData({
+        ...data,
+        customers: data.customers.filter((customer) => customer.id !== customerId),
+        orders: data.orders.filter((order) => order.customerId !== customerId)
+      });
+      flash("Cliente eliminado junto con sus pedidos.");
+    } catch (error) {
+      flash(error instanceof Error ? error.message : "No se pudo eliminar el cliente.");
+    }
   }
 
   function addOrder(formData: FormData) {
@@ -127,9 +149,14 @@ export default function Dashboard() {
     });
   }
 
-  function removeOrder(orderId: string) {
-    updateData({ ...data, orders: data.orders.filter((order) => order.id !== orderId) });
-    flash("Pedido eliminado.");
+  async function removeOrder(orderId: string) {
+    try {
+      await deleteOrderFromDb(orderId);
+      updateData({ ...data, orders: data.orders.filter((order) => order.id !== orderId) });
+      flash("Pedido eliminado.");
+    } catch (error) {
+      flash(error instanceof Error ? error.message : "No se pudo eliminar el pedido.");
+    }
   }
 
   function addTruck(formData: FormData) {
@@ -155,9 +182,14 @@ export default function Dashboard() {
     });
   }
 
-  function removeTruck(truckId: string) {
-    updateData({ ...data, trucks: data.trucks.filter((truck) => truck.id !== truckId) });
-    flash("Camión eliminado.");
+  async function removeTruck(truckId: string) {
+    try {
+      await deleteTruckFromDb(truckId);
+      updateData({ ...data, trucks: data.trucks.filter((truck) => truck.id !== truckId) });
+      flash("Camión eliminado.");
+    } catch (error) {
+      flash(error instanceof Error ? error.message : "No se pudo eliminar el camión.");
+    }
   }
 
   function resetDemo() {
@@ -209,6 +241,17 @@ export default function Dashboard() {
     link.download = `recorridos-${selectedDate}.csv`;
     link.click();
     URL.revokeObjectURL(url);
+  }
+
+  if (loading) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-slate-100 p-6 text-slate-950">
+        <div className="rounded-3xl bg-white p-8 text-center shadow-soft">
+          <p className="text-lg font-black">Cargando datos...</p>
+          <p className="mt-2 text-sm text-slate-500">Conectando con Supabase.</p>
+        </div>
+      </main>
+    );
   }
 
   return (
