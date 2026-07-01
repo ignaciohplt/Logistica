@@ -17,6 +17,34 @@ Incluye:
 - Botón para abrir el recorrido en Google Maps.
 - Botón para enviar recorrido por WhatsApp al chofer.
 - Exportación CSV del recorrido.
+- Acceso protegido con usuario y contraseña obligatorios.
+
+## Seguridad: usuario y contraseña
+
+La app está protegida desde el servidor con usuario y contraseña.
+
+Para probarla en tu PC ya viene configurado:
+
+```bash
+Usuario: admin
+Contraseña: 1234
+```
+
+Para cambiarlo en tu PC, editá el archivo `.env.local`:
+
+```bash
+APP_USERNAME=admin
+APP_PASSWORD=1234
+```
+
+En Vercel tenés que cargar estas variables en **Settings > Environment Variables**:
+
+```bash
+APP_USERNAME=tu_usuario
+APP_PASSWORD=tu_contraseña_segura
+```
+
+Si esas variables no están configuradas, la app no permite entrar.
 
 ## Cómo ejecutarlo en tu PC
 
@@ -77,7 +105,7 @@ Ese endpoint consulta OpenStreetMap/Nominatim y devuelve coordenadas.
 
 ## Próximas mejoras recomendadas
 
-- Login de usuario.
+- Login avanzado con usuarios individuales.
 - Base de datos Supabase.
 - Importar pedidos desde Excel.
 - Estado para chofer: pendiente, entregado, no entregado.
